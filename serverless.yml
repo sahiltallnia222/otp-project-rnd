@@ -1,0 +1,55 @@
+org: otpservice1
+app: otp-rnd
+service: otp-project-rnd
+
+package:
+  individually: true
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: ap-south-1
+  stage: ${opt:stage, "dev"}
+
+plugins:
+  - serverless-python-requirements
+  - serverless-offline
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    layer:
+      name: otp-project-rnd
+      description: OTP project layer
+      compatibleRuntimes:
+        - python3.12
+
+  environmentVariables:
+    dev:
+      REDIS_HOST: dev-redis-host-url
+    pre-prod:
+      REDIS_HOST: pre-prod-redis-host-url
+    prod:
+      REDIS_HOST: prod-redis-host-url
+
+functions:
+  app:
+    package:
+      include:
+        - "main.py"
+      exclude:
+        - "requirements.txt"
+        - "package.json"
+        - "package-lock.json"
+        - ".serverless/**"
+        - ".virtualenv/**"
+        - "node_modules/**"
+
+    handler: main.handler
+    environment:
+      STAGE: ${self:provider.stage}
+      REDIS_HOST: ${self:custom.environmentVariables.${self:provider.stage}.REDIS_HOST}
+    layers:
+      - { Ref: PythonRequirementsLambdaLayer }
+    url:
+      cors: true
